@@ -1,44 +1,120 @@
-# wwebjs-mongo
-A MongoDB plugin for whatsapp-web.js! 
+# wwebjs-postgres  
+A PostgreSQL session store for whatsapp-web.js  
 
-Use MongoStore to save your WhatsApp MultiDevice session on a MongoDB Database.
+Persist your WhatsApp Web sessions in PostgreSQL for reliable multi-device authentication.  
 
-## Quick Links
+## Features  
 
-* [Guide / Getting Started](https://wwebjs.dev/guide/authentication.html) _(work in progress)_
-* [GitHub](https://github.com/jtourisNS/wwebjs-mongo)
-* [npm](https://www.npmjs.com/package/wwebjs-mongo)
+✅ **Reliable Session Storage** - Never lose your WhatsApp session  
+✅ **Multi-Device Ready** - Works with WhatsApp's multi-device feature  
+✅ **Automatic Backups** - Regular session backups to prevent data loss  
+✅ **Easy Management** - Simple API for session operations  
 
-## Installation
+## Installation  
 
-The module is now available on npm! `npm i wwebjs-mongo`
+```bash
+npm install wwebjs-postgres pg whatsapp-web.js
+```
 
+## Quick Start  
 
-## Example usage
-
-```js
+```javascript
 const { Client, RemoteAuth } = require('whatsapp-web.js');
-const { MongoStore } = require('wwebjs-mongo');
-const mongoose = require('mongoose');
+const { PostgresStore } = require('wwebjs-postgres');
+const { Pool } = require('pg');
 
-mongoose.connect(process.env.MONGODB_URI).then(() => {
-    const store = new MongoStore({ mongoose: mongoose });
-    const client = new Client({
-        authStrategy: new RemoteAuth({
-            store: store,
-            backupSyncIntervalMs: 300000
-        })
-    });
-
-    client.initialize();
+// Initialize PostgreSQL connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/whatsapp_sessions'
 });
 
+// Create session store
+const store = new PostgresStore({ pool });
+
+// Initialize WhatsApp client
+const client = new Client({
+  authStrategy: new RemoteAuth({
+    store: store,
+    backupSyncIntervalMs: 300000 // Backup every 5 minutes
+  }),
+  puppeteer: {
+    headless: false // Show browser window (set true for production)
+  }
+});
+
+client.initialize();
+
+client.on('qr', (qr) => {
+  console.log('Scan this QR to authenticate:');
+  // Display QR code in terminal
+  require('qrcode-terminal').generate(qr, { small: true });
+});
+
+client.on('ready', () => {
+  console.log('Client is ready!');
+});
 ```
 
-## Delete Remote Session
+## Advanced Usage  
 
-How to force delete a specific remote session on the Database:
+### Session Management  
 
-```js
-await store.delete({session: 'yourSessionName'});
+```javascript
+// Check if session exists
+const exists = await store.sessionExists({ session: 'my-session' });
+
+// Force delete a session
+await store.delete({ session: 'old-session' });
+
+// List all stored sessions
+const sessions = await store.listSessions();
 ```
+
+### Custom Configuration  
+
+```javascript
+const store = new PostgresStore({
+  pool: pool,
+  tableName: 'custom_sessions_table', // Optional custom table name
+  sessionIdPrefix: 'myapp-' // Optional session ID prefix
+});
+```
+
+## Database Setup  
+
+Your PostgreSQL database should have the following schema (automatically created if not exists):
+
+```sql
+CREATE TABLE whatsapp_sessions (
+  session_id VARCHAR(255) PRIMARY KEY,
+  session_data BYTEA NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_whatsapp_sessions_updated_at ON whatsapp_sessions(updated_at);
+```
+
+## Troubleshooting  
+
+**Connection Issues:**  
+- Verify your PostgreSQL server is running  
+- Check connection string format: `postgres://user:password@host:port/database`  
+
+**Session Problems:**  
+- Ensure the client has proper write permissions  
+- Check storage space if sessions fail to save  
+
+## Resources  
+
+- [whatsapp-web.js Documentation](https://wwebjs.dev/)  
+- [PostgreSQL Node.js Driver](https://node-postgres.com/)  
+- [Report Issues](https://github.com/yourusername/wwebjs-postgres/issues)  
+
+---
+
+**Note:** Always keep your session data secure. Never expose your database credentials or session files publicly.  
+
+---
+
+✨ **Pro Tip:** For production deployments, set `headless: true` and consider using a process manager like PM2 to keep your WhatsApp client running 24/7.
