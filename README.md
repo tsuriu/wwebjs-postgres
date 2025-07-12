@@ -1,5 +1,9 @@
+✨ **Inspired by:** This package was inspired by [wwebjs-mongo](https://github.com/jtouris/wwebjs-mongo.git), a MongoDB session store for whatsapp-web.js. We adapted the concept for PostgreSQL to offer an alternative database solution.
+
+---
+
 # wwebjs-postgres  
-A PostgreSQL session store for whatsapp-web.js  
+A PostgreSQL session store for whatsapp-web.js
 
 Persist your WhatsApp Web sessions in PostgreSQL for reliable multi-device authentication.  
 
